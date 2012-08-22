@@ -50,197 +50,90 @@
 
 #include "core/usbcdc/cdcuser.h"
 
-/*
- * Pin connection:
- *
- *	DB25	GPIO	Dir	Name
- *	1	1.1	in	-Strobe
- *	2	2.0	in	Data0
- *	3	2.1	in	Data1
- *	4	2.2	in	Data2
- *	5	2.3	in	Data3
- *	6	2.4	in	Data4
- *	7	2.5	in	Data5
- *	8	2.6	in	Data6
- *	9	2.7	in	Data7
- *	10	0.11	out	-Ack		'd'
- *	11	0.10	out	Busy		'c'
- *	12	0.9	out	PaperEnd	'b'
- *	13	0.8	out	SelectStatus	'a'
- *	14	3.0	in	AutoFeed
- *	15	3.1	out	-Error		'e'
- *	16	3.2	in	-Initialize
- *	17	3.3	in	-Select
- *	18-25	-	-	GND
- */
 
+#define NLAMPS	14
+
+//				A  B  C  D   E  F  G  H   I  J  K  L  M  N
+//				------------------------------------------
+static const int lp[NLAMPS] = { 0, 0, 0, 0, 0,  0, 1, 1, 1, 1,  1, 2, 2, 2 };
+static const int lb[NLAMPS] = { 2, 8, 5, 7, 9, 11, 1, 5, 7, 9, 11, 1, 3, 5 };
+
+#define NSWITCH 14
+
+//				 A  B  C  D  E  F  G  H   I  J  K  L  M   N
+//				 ------------------------------------------
+static const int sp[NSWITCH] = { 1, 1, 1, 1, 1,  1, 2, 2, 2, 2, 2, 2, 2,  2 };
+static const int sb[NSWITCH] = { 0, 2, 4, 6, 8, 10, 0, 2, 4, 6, 7, 8, 9, 10 };
 
 static void
-sts(void)
-{
-	int j, i;
-	char s[64];
-
-	j = 0;
-	s[j++] = 's';
-	s[j++] = '0' + gpioGetValue(1, 1);
-	s[j++] = ' ';
-	for (i = 7; i >- 0; i--)
-		s[j++] = '0' + gpioGetValue(2, i);
-	s[j++] = ' ';
-	s[j++] = 'a';
-	s[j++] = '0' + gpioGetValue(3, 0);
-	s[j++] = ' ';
-	s[j++] = 'i';
-	s[j++] = '0' + gpioGetValue(3, 2);
-	s[j++] = ' ';
-	s[j++] = 's';
-	s[j++] = '0' + gpioGetValue(3, 3);
-	s[j++] = ' ';
-	s[j++] = ' ';
-	s[j++] = 's';
-	s[j++] = '0' + gpioGetValue(0, 8);
-	s[j++] = ' ';
-	s[j++] = 'p';
-	s[j++] = '0' + gpioGetValue(0, 9);
-	s[j++] = ' ';
-	s[j++] = 'b';
-	s[j++] = '0' + gpioGetValue(0, 10);
-	s[j++] = ' ';
-	s[j++] = 'a';
-	s[j++] = '0' + gpioGetValue(0, 11);
-	s[j++] = ' ';
-	s[j++] = 'e';
-	s[j++] = '0' + gpioGetValue(3, 1);
-	
-	s[j++] = '\0';
-	puts(s);
-	puts("\r\n");
-}
-
-
-static int8_t got_prn;
-
-void
-PIOINT1_IRQHandler(void)
+init_bits(void)
 {
 	int i;
 
-	i = gpioIntStatus(1, 1);
-	if (i) {
-		gpioSetValue(0,10,1); 
-		got_prn = GPIO_GPIO2DATA;
-		gpioIntClear(1, 1);
-	}
-}
-
-static void
-prt(void)
-{
-	int i, j;
-
-	printf("\r\nHello World\r\n");
-
-	gpioSetDir(1, 1, gpioDirection_Input);
-	for (i = 0; i < 8; i++)
-		gpioSetDir(2, i, gpioDirection_Input);
-	gpioSetDir(0, 8, gpioDirection_Output);
-	gpioSetDir(0, 9, gpioDirection_Output);
-	gpioSetDir(0, 10, gpioDirection_Output);
-
-	IOCON_JTAG_TCK_PIO0_10 = 0
-	    | IOCON_JTAG_TDI_PIO0_11_FUNC_GPIO
-	    | IOCON_JTAG_TDI_PIO0_11_ADMODE_DIGITAL;
 
 	IOCON_JTAG_TDI_PIO0_11 = 0
 	    | IOCON_JTAG_TDI_PIO0_11_FUNC_GPIO
 	    | IOCON_JTAG_TDI_PIO0_11_ADMODE_DIGITAL;
 
-	gpioSetDir(0, 11, gpioDirection_Output);
-	gpioSetDir(3, 0, gpioDirection_Input);
-	gpioSetDir(3, 1, gpioDirection_Output);
-	gpioSetDir(3, 2, gpioDirection_Input);
-	gpioSetDir(3, 3, gpioDirection_Input);
+	IOCON_JTAG_TDO_PIO1_1 = 0
+	    | IOCON_JTAG_TDO_PIO1_1_FUNC_GPIO
+	    | IOCON_JTAG_TDO_PIO1_1_ADMODE_DIGITAL;
 
-	gpioSetInterrupt(1,                  // Port
-	    1,                               // Pin
-	    gpioInterruptSense_Edge,         // Edge/Level Sensitive
-	    gpioInterruptEdge_Single,        // Single/Double Edge
-	    gpioInterruptEvent_ActiveLow);   // Rising/Falling
-	gpioIntEnable(1, 1);
+	for (i = 0; i < NLAMPS; i++)
+		gpioSetDir(lp[i], lb[i], gpioDirection_Output);
 
-	gpioSetValue(0,11,1);
-	gpioSetValue(0,10,0);
-	gpioSetValue(0,9,0);
-
-	while (1) {
-		j = CDC_getchar();
-		switch (j) {
-		case 's':	gpioSetValue(0,8,0); sts(); break;
-		case 'S':	gpioSetValue(0,8,1); sts(); break;
-		case 'p':	gpioSetValue(0,9,0); sts(); break;
-		case 'P':	gpioSetValue(0,9,1); sts(); break;
-		case 'b':	gpioSetValue(0,10,0); sts(); break;
-		case 'B':	gpioSetValue(0,10,1); sts(); break;
-		case 'a':	gpioSetValue(0,11,0); sts(); break;
-		case 'A':	gpioSetValue(0,11,1); sts(); break;
-		case 'e':	gpioSetValue(3,1,0); sts(); break;
-		case 'E':	gpioSetValue(3,1,1); sts(); break;
-		case 'x':
-			while (1) 
-				CDC_putchar('x');
-			break;
-		case '?':
-			sts();
-			break;
-		}
-
-		if (gpioGetValue(0, 10)) {
-			CDC_putchar(got_prn);
-			for (j = 0; j < 2; j++)
-				gpioSetValue(0,11,0);
-			gpioSetValue(0,11,1);
-			gpioSetValue(0,10,0);
-		}
-	}
-
+	for (i = 0; i < NSWITCH; i++)
+		gpioSetDir(sp[i], sb[i], gpioDirection_Input);
 
 }
+	
 
-/**************************************************************************/
-/*! 
-    Main program entry point.  After reset, normal code execution will
-    begin here.
-*/
-/**************************************************************************/
+
 int
 main(void)
 {
-  // Configure cpu and mandatory peripherals
-  systemInit();
+	int i, j;
+	int last[NSWITCH];
+	int last_when[NSWITCH];
+	int now;
+	int currentSecond, lastSecond;
 
-  uint32_t currentSecond, lastSecond;
-  currentSecond = lastSecond = 0;
-  
-  // uartInit(115200);
-  prt();
+	systemInit();
 
-  while (1)
-  {
-    // Toggle LED once per second
-    currentSecond = systickGetSecondsActive();
-    if (currentSecond != lastSecond)
-    {
-      lastSecond = currentSecond;
-      gpioSetValue(CFG_LED_PORT, CFG_LED_PIN, !(gpioGetValue(CFG_LED_PORT, CFG_LED_PIN)));
-      uartSendByte('*');
-    }
+	init_bits(); 
 
-    // Poll for CLI input if CFG_INTERFACE is enabled in projectconfig.h
-    #ifdef CFG_INTERFACE 
-      cmdPoll(); 
-    #endif
-  }
+	while (1) {
+		// Toggle LED once per second
+		currentSecond = systickGetSecondsActive();
+		if (currentSecond != lastSecond) {
+			lastSecond = currentSecond;
+			gpioSetValue(CFG_LED_PORT, CFG_LED_PIN, !(gpioGetValue(CFG_LED_PORT, CFG_LED_PIN)));
+			CDC_putchar('*');
+			CDC_BulkIn();
+		}
 
-  return 0;
+		i = CDC_getchar();
+		if (i >= 'A' && i < 'A' + NLAMPS) {
+			i -= 'A';
+			gpioSetValue(lp[i], lb[i], 1);
+		} else if (i >= 'a' && i < 'a' + NLAMPS) {
+			i -= 'a';
+			gpioSetValue(lp[i], lb[i], 0);
+		} else if (i != -1) {
+			printf("<%d>", i);
+		}
+		for (i = 0; i < NSWITCH; i++) {
+			now = systickGetTicks() & ~15;
+			j = gpioGetValue(sp[i], sb[i]);
+			if (last_when[i] == now)
+				continue;
+			if (j != last[i]) {
+				CDC_putchar((j ? 'a' : 'A') + i);
+			}
+			last[i] = j;
+			last_when[i] = now;
+		}
+	}
+
+	return 0;
 }

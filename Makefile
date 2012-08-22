@@ -181,6 +181,9 @@ OCFLAGS = --strip-unneeded
 
 all: firmware
 
+${LPCRC}:	tools/lpcrc/lpcrc.c
+	cc -o lpcrc tools/lpcrc/lpcrc.c
+
 %.o : %.c
 	$(CC) $(CFLAGS) -o $@ $<
 

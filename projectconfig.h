@@ -686,7 +686,7 @@
     #endif
 
     #ifdef CFG_BRD_LPC1343_OLIMEX_P
-      #define CFG_INTERFACE
+      #undef CFG_INTERFACE
       #define CFG_INTERFACE_MAXMSGSIZE    (256)
       #define CFG_INTERFACE_PROMPT        "LPC-P1343 >> "
       #define CFG_INTERFACE_SILENTMODE    (0)
