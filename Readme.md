@@ -1,4 +1,4 @@
-# LPC1343 based LPT to USB port adapter
+# LPC1343 based lamp/switch controller for NIMBI game console
 
 Based on...
 
