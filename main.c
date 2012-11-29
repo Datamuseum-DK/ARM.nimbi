@@ -92,7 +92,7 @@ init_bits(void)
 int
 main(void)
 {
-	int i, j;
+	int i, j, s;
 	int last[NSWITCH];
 	int last_when[NSWITCH];
 	int now;
@@ -102,6 +102,23 @@ main(void)
 
 	init_bits(); 
 
+	for (i = 0; i < NLAMPS; i++)
+		gpioSetValue(lp[i], lb[i], 0);
+	currentSecond = systickGetSecondsActive();
+	do 
+		i = systickGetSecondsActive();
+	while (i == currentSecond);
+	currentSecond = i;
+	for (i = 0; i < NLAMPS; i++)
+		gpioSetValue(lp[i], lb[i], 1);
+	do 
+		i = systickGetSecondsActive();
+	while (i == currentSecond);
+	currentSecond = i;
+	for (i = 0; i < NLAMPS; i++)
+		gpioSetValue(lp[i], lb[i], 0);
+
+	s = 0;
 	while (1) {
 		// Toggle LED once per second
 		currentSecond = systickGetSecondsActive();
@@ -122,11 +139,14 @@ main(void)
 		} else if (i != -1) {
 			printf("<%d>", i);
 		}
-		for (i = 0; i < NSWITCH; i++) {
-			now = systickGetTicks() & ~15;
-			j = gpioGetValue(sp[i], sb[i]);
-			if (last_when[i] == now)
-				continue;
+
+		i = s++;
+		if (s == NSWITCH)
+			s = 0;
+		
+		now = systickGetTicks() & ~15;
+		j = gpioGetValue(sp[i], sb[i]);
+		if (last_when[i] != now) {
 			if (j != last[i]) {
 				CDC_putchar((j ? 'a' : 'A') + i);
 			}
