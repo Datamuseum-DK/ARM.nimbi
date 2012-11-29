@@ -292,10 +292,15 @@ void CDC_NotificationIn (void) {
 int
 CDC_getchar(void)
 {
+	int i = 0;
 
+	__disable_irq();
 	if (fifo_empty(&rx_fifo)) 
-		return (-1);
-	return (fifo_get(&rx_fifo));
+		i = -1;
+	else
+		i = fifo_get(&rx_fifo);
+	__enable_irq();
+	return (i);
 }
 
 int
